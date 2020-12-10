@@ -39,7 +39,7 @@ def go(opts):
         while attempts < 300:
             print(".", end="")
             sys.stdout.flush()
-            content = iwlist.scan()
+            content = iwlist.scan(interface)
             cells = iwlist.parse(content)
             for cell in cells:
                 if cell["essid"].startswith("Meross_"):
