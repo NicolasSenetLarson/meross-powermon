@@ -8,7 +8,7 @@ import time
 import os
 import sys
 
-from meross_powermon import (iwlist, config)
+from meross_powermon import config
 from meross_powermon.utils import mangle
 
 UPDOWN = "ip link set dev {} {}"
@@ -29,81 +29,26 @@ def go(opts):
     rootcfg = config.load()
     cfg = config.load_user(rootcfg["user"])
     cfg.update(rootcfg)
-    interface = cfg["interface"]
-
-    wifi_up(interface)
-    print("Looking for Meross device...", end="")
 
     try:
-        attempts = 0
-        while attempts < 300:
-            print(".", end="")
-            sys.stdout.flush()
-            content = iwlist.scan(interface)
-            cells = iwlist.parse(content)
-            for cell in cells:
-                if cell["essid"].startswith("Meross_"):
-                    print("\nFound {}".format(cell["essid"]))
+        # Get initial device data
+        dev0 = get_device_data()
+        device = dict()
+        device[opts.name] = dev0["payload"]["all"]["system"]
 
-                    associate(cell, interface)
-                    add_ip(interface)
+        # Setup server details
+        set_server_details(cfg, opts)
 
-                    # Get initial device data
-                    dev0 = get_device_data()
-                    device = dict()
-                    device[opts.name] = dev0["payload"]["all"]["system"]
+        # Setup wifi details
+        set_wifi_details(cfg)
 
-                    # Setup server details
-                    set_server_details(cfg, opts)
-
-                    # Setup wifi details
-                    set_wifi_details(cfg)
-
-                    # Save device config
-                    config.add_device(device, opts, cfg["user"])
-                    typ = device[opts.name]["hardware"]["type"]
-                    print("Added {} ({})".format(opts.name, typ))
-
-                    # We're done
-                    attempts = 999
-                    break
-
-            attempts += 1
-            time.sleep(1)
+        # Save device config
+        config.add_device(device, opts, cfg["user"])
+        typ = device[opts.name]["hardware"]["type"]
+        print("Added {} ({})".format(opts.name, typ))
 
     except subprocess.CalledProcessError:
         pass
-
-    finally:
-        # Remove the IP address from the interface
-        del_ip(interface)
-        wifi_down(interface)
-
-
-def wifi_up(interface):
-    cmd = UPDOWN.format(interface, "up")
-    run(cmd)
-
-
-def wifi_down(interface):
-    cmd = UPDOWN.format(interface, "down")
-    run(cmd)
-
-
-def associate(cell, interface):
-    cmd = ASSOCIATE.format(interface, cell["mac"], cell["essid"])
-    run(cmd)
-
-
-def add_ip(interface):
-    cmd = "ip addr add 10.10.10.100/24 dev {}".format(interface)
-    run(cmd)
-
-
-def del_ip(interface):
-    cmd = "ip addr del 10.10.10.100/24 dev {}".format(interface)
-    run(cmd)
-
 
 def send(url, data):
     r = requests.post(url, json=data)
@@ -159,10 +104,3 @@ def set_wifi_details(cfg):
     data = dict({"header": header,
                  "payload": payload})
     return send(URL + "/config/", data)
-
-
-def run(cmd):
-    print(cmd, end=" ")
-    result = subprocess.run(cmd.split(), timeout=3)
-    result.check_returncode()
-    print("OK")

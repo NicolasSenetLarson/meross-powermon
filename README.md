@@ -28,11 +28,13 @@ Once that's done you don't need to think about those options, you can change the
 
 To add a device (as root):
 
+**no-scan version:** manually connect to the Meross_* network before running this.
+
 `./meross setup name`
 
-Will bring up the wifi device and scan for an AP name starting with "Meross_"
+~~Will bring up the wifi device and scan for an AP name starting with "Meross_"
 
-We then associate with the Meross_* network
+We then associate with the Meross_* network~~
 
 Next we configure the wifi network with an appropriate IP address and route and gather some device data (which we'll store later). Then it's a case of giving the device details of the MQTT server to use and the ssid and password for our normal wifi network.
 
